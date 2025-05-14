@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create NocoDB User</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            background-color: #f4f7f6;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Changed to flex-start for messages */
+            padding-top: 40px; /* Add padding to show messages nicely */
+            min-height: calc(100vh - 40px); /* Adjust height for padding */
+        }
+        .main-content-wrapper { /* A simple wrapper for centering */
+            width: 100%;
+            max-width: 550px; /* Adjust as needed */
+        }
+        .container {
+            background: #fff;
+            padding: 25px 30px; /* More padding for a better look */
+            border-radius: 8px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+        }
+        h1 {
+            font-size: 1.8em; /* Matched from big app */
+            color: #0056b3; /* Matched */
+            margin-top: 0; /* Cleaner look */
+            margin-bottom: 25px; /* Increased margin */
+            border-bottom: 1px solid #eee; /* Matched */
+            padding-bottom: 15px; /* Increased padding */
+            text-align: center;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px; /* Matched */
+            font-weight: 600; /* Matched */
+            color: #444; /* Slightly darker for better contrast */
+        }
+        input[type="email"],
+        input[type="password"],
+        input[type="text"] {
+            padding: 10px 12px; /* Matched */
+            margin-bottom: 20px; /* Increased margin */
+            border: 1px solid #ccc; /* Matched */
+            border-radius: 4px; /* Matched */
+            font-size: 0.95rem; /* Matched */
+            width: 100%; /* Use 100% and box-sizing */
+            box-sizing: border-box;
+        }
+        input[type="email"]:focus,
+        input[type="password"]:focus,
+        input[type="text"]:focus {
+            border-color: #007bff; /* Highlight focus */
+            outline: none;
+            box-shadow: 0 0 0 0.1rem rgba(0,123,255,.25); /* Softer focus ring */
+        }
+        button[type="submit"] {
+            padding: 12px 20px; /* Slightly larger padding */
+            background-color: #007bff; /* Matched */
+            color: white; /* Matched */
+            border: none; /* Matched */
+            border-radius: 4px; /* Matched */
+            cursor: pointer; /* Matched */
+            transition: background-color 0.3s ease; /* Matched */
+            font-size: 1rem; /* Matched */
+            font-weight: bold; /* Added for emphasis */
+            width: 100%; /* Full width button */
+        }
+        button[type="submit"]:hover {
+            background-color: #0056b3; /* Matched */
+        }
+        .flash-messages {
+            list-style-type: none;
+            padding: 0;
+            margin: 0 0 20px 0; /* Margin below messages, before container */
+        }
+        .flash-messages li {
+            padding: 12px 18px; /* Matched */
+            margin-bottom: 10px; /* Spacing between messages */
+            border-radius: 5px; /* Matched */
+            font-weight: 500; /* Matched */
+            border: 1px solid transparent; /* Matched */
+            text-align: center;
+        }
+        .flash-messages li.success {
+            background-color: #d4edda; /* Matched */
+            color: #155724; /* Matched */
+            border-color: #c3e6cb; /* Matched */
+        }
+        .flash-messages li.error {
+            background-color: #f8d7da; /* Matched */
+            color: #721c24; /* Matched */
+            border-color: #f5c6cb; /* Matched */
+        }
+        .flash-messages li.info {
+            background-color: #d1ecf1; /* Matched */
+            color: #0c5460; /* Matched */
+            border-color: #bee5eb; /* Matched */
+        }
+        .flash-messages li.warning {
+            background-color: #fff3cd; /* Matched */
+            color: #856404; /* Matched */
+            border-color: #ffeeba; /* Matched */
+        }
+        form div { /* Add a bit of space below each form group */
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-content-wrapper">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <ul class="flash-messages">
+            {% for category, message in messages %}
+              <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+            </ul>
+          {% endif %}
+        {% endwith %}
+
+        <div class="container">
+            <h1>Create NocoDB User</h1>
+            <form method="POST" action="{{ url_for('user_creator_page') }}">
+                <div>
+                    <label for="email_address">Email Address:</label>
+                    <input type="email" id="email_address" name="email_address" required>
+                </div>
+                <div>
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <div>
+                    <label for="role">Role (e.g., admin, user):</label>
+                    <input type="text" id="role" name="role" required>
+                </div>
+                <button type="submit">Create User</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
