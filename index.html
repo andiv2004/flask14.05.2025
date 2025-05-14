@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exam Sheet Analyzer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <style>
+        body { display: flex; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; background-color: #f4f7f6; color: #333; }
+        .sidebar { width: 240px; background-color: #ffffff; padding: 20px; height: 100vh; box-shadow: 2px 0 8px rgba(0,0,0,0.1); display: flex; flex-direction: column; border-right: 1px solid #e0e0e0; }
+        .sidebar h2 { color: #0056b3; margin-top: 0; font-size: 1.5em; border-bottom: 2px solid #0056b3; padding-bottom: 10px;}
+        .sidebar .mode-toggle button { width: 100%; text-align: left; background: none; font-size: 1em; cursor: pointer; text-decoration: none; color: #333; font-weight: 500; display: block; padding: 10px 15px; border-radius: 5px; transition: background-color 0.3s, color 0.3s; border: 1px solid transparent; margin-bottom: 8px; }
+        .sidebar .mode-toggle button:hover { background-color: #e9f5ff; color: #007bff; }
+        .sidebar .mode-toggle button.active-mode { background-color: #007bff; color: white; font-weight: bold; border-color: #0056b3; }
+        .main-content { flex-grow: 1; padding: 25px; overflow-y: auto; max-height: 100vh; }
+        .content-section { display: none; }
+        .content-section.active { display: block; }
+        .container { background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 3px 10px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        h1 { font-size: 1.8em; color: #0056b3; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom:10px;}
+        h2 { font-size: 1.5em; color: #0067cc; margin-top: 25px; margin-bottom: 15px; }
+        h3 { font-size: 1.2em; color: #333; margin-bottom: 10px; }
+        form { margin-bottom: 20px; padding: 20px; border: 1px solid #e0e0e0; border-radius: 6px; background-color: #fdfdfd; }
+        label { display: block; margin-bottom: 8px; font-weight: 600;}
+        input[type="file"], input[type="text"], select, textarea { padding: 10px 12px; margin-bottom:15px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.95rem; width: calc(100% - 26px); box-sizing: border-box; }
+        textarea { min-height: 100px; font-family: monospace; white-space: pre; }
+        button, .button-like { padding: 10px 18px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background-color 0.3s ease; font-size: 1rem; margin-right: 10px; }
+        button:hover, .button-like:hover { background-color: #0056b3; }
+        .button-like { display: inline-block; text-decoration: none; text-align: center;}
+        button.secondary { background-color: #6c757d; }
+        button.secondary:hover { background-color: #545b62; }
+        button.danger { background-color: #dc3545; }
+        button.danger:hover { background-color: #c82333; }
+        button.success { background-color: #28a745; }
+        button.success:hover { background-color: #1e7e34; }
+        .flash-messages { list-style-type: none; padding: 0; margin-bottom: 20px; }
+        .flash-messages li { padding: 12px 18px; margin: 8px 0; border-radius: 5px; font-weight: 500; border: 1px solid transparent; }
+        .flash-messages li.info { background-color: #d1ecf1; color: #0c5460; border-color: #bee5eb; }
+        .flash-messages li.error { background-color: #f8d7da; color: #721c24; border-color: #f5c6cb; }
+        .flash-messages li.warning { background-color: #fff3cd; color: #856404; border-color: #ffeeba; }
+        .flash-messages li.success { background-color: #d4edda; color: #155724; border-color: #c3e6cb; }
+        .analysis-results { margin-top: 25px; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px; background-color: #f9f9f9; }
+        .analysis-results h3.expandable-header { cursor: pointer; color: #0056b3; display:inline-block; margin-right: 5px;}
+        .analysis-results h3.expandable-header::after { content: ' [+]'; font-size: 0.8em; }
+        .analysis-results h3.expandable-header.expanded::after { content: ' [-]'; }
+        .analysis-results table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.9em; }
+        .analysis-results th, .analysis-results td { padding: 10px 12px; border: 1px solid #ccc; text-align: left; }
+        .analysis-results th { background-color: #e9ecef; font-weight: 600; }
+        .analysis-results tr:nth-child(even) { background-color: #f8f9fa; }
+        .analysis-results tr:hover { background-color: #e2e6ea; }
+        .annotated-image { max-width: 100%; height: auto; display: block; margin-top: 20px; border: 1px solid #ccc; border-radius: 5px; }
+        .submission-section { margin-top: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 5px; background-color: #f0f8ff; }
+        .submission-status { margin-top: 10px; font-weight: bold; padding: 8px; border-radius: 4px;}
+        .submission-status.success { color: #155724; background-color: #d4edda; }
+        .submission-status.warning { color: #856404; background-color: #fff3cd; }
+        .submission-status.error { color: #721c24; background-color: #f8d7da; }
+        .drive-link { color: #007bff; text-decoration: none; font-weight:500; }
+        .drive-link:hover { text-decoration: underline; }
+        .grade-container { display: flex; align-items: center; margin-bottom: 20px; flex-wrap: wrap;}
+        .grade-container h3 { margin-right: 20px; margin-bottom: 0; white-space: nowrap;}
+        .grade-container button { margin-top:0; }
+        .batch-results table { font-size: 0.85em; }
+        .batch-results th, .batch-results td { padding: 8px 10px; }
+        .batch-verification-buttons { margin-top: 25px; text-align: center; padding-top:15px; border-top: 1px solid #eee;}
+        .batch-verification-buttons button { margin: 0 10px; padding: 10px 20px; }
+        .verificare-section { margin-top: auto; padding: 15px; border-top: 1px solid #ddd; background-color: #f8f9fa;}
+        .verificare-section h3 { font-size: 1.1em; margin-bottom: 8px; color: #333;}
+        #verificare_status_container { margin-bottom: 10px; padding: 8px; border-radius: 4px; font-size: 0.9em;}
+        #verificare_status_container.enabled { background-color: #d4edda; border: 1px solid #c3e6cb; color: #155724;}
+        #verificare_status_container.disabled { background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24;}
+        #verificare_status { font-weight: bold; }
+        #verificare_description { margin-top: 5px; font-style: italic; color: #555; font-size: 0.85em;}
+        #toggle_verificare_btn { width:100%; font-size: 0.9em; padding: 8px 10px; }
+        .step-info { background-color: #e9f5ff; padding: 10px; border-radius: 5px; margin-bottom: 15px; border: 1px solid #cce0ff;}
+        .step-info p { margin: 5px 0; color: #004085;}
+        .existing-keys-list { list-style-type: square; padding-left: 20px; margin-top:10px;}
+        .existing-keys-list li { margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>Exam Analyzer</h2>
+        <div class="mode-toggle">
+            <button id="showSingleScanMode" onclick="window.location.href='{{ url_for('main_route', mode='single') }}';" class="{{ 'active-mode' if active_mode == 'single' else '' }}">Single Exam Analysis</button>
+            <button id="showBatchMode" onclick="window.location.href='{{ url_for('main_route', mode='batch') }}';" class="{{ 'active-mode' if active_mode == 'batch' else '' }}">Batch Processing</button>
+            {% if session.user_role == 'admin' %}
+            <button id="showKeysMode" onclick="window.location.href='{{ url_for('main_route', mode='keys') }}';" class="{{ 'active-mode' if active_mode == 'keys' else '' }}">Manage Answer Keys</button>
+            {% endif %}
+        </div>
+        <div class="verificare-section">
+            <h3>Human Verification</h3>
+            <div id="verificare_status_container" class="{{ 'enabled' if verificare_umana else 'disabled' }}">
+                <div id="verificare_status">Status: {{ 'Enabled' if verificare_umana else 'Disabled' }}</div>
+                <div id="verificare_description">
+                    {% if verificare_umana %} Data saved to NocoDB/Drive. Local files deleted after successful save.
+                    {% else %} Files processed locally. No data saved externally. {% endif %}
+                </div>
+            </div>
+            <button id="toggle_verificare_btn" onclick="toggleVerificareUmana()">
+                {{ 'Disable' if verificare_umana else 'Enable' }} Verification
+            </button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <ul class="flash-messages">
+                {% for category, message in messages %}
+                    {% if not ((category == 'error' or category == 'success') and (active_mode == 'keys' or form_action_error_on_keys)) %}
+                        <li class="{{ category }}">{{ message }}</li>
+                    {% endif %}
+                {% endfor %}
+            </ul>
+            {% endif %}
+        {% endwith %}
+
+        <div id="singleScanSection" class="content-section {{ 'active' if active_mode == 'single' else '' }}">
+            <div class="container">
+                <h1>Single Exam Analysis</h1>
+                {% if single_scan_step == 1 %}
+                    <h2>Step 1: Enter Student ID</h2>
+                    <form method="POST" action="{{ url_for('main_route') }}">
+                        <input type="hidden" name="form_action" value="single_scan_step_1">
+                        <input type="hidden" name="active_mode_on_submit" value="single">
+                        <label for="student_id_input">Student ID:</label>
+                        <input type="text" id="student_id_input" name="student_id_input" value="{{ single_scan_student_id or '' }}" required>
+                        <button type="submit">Next</button>
+                    </form>
+                {% elif single_scan_step == 2 %}
+                    <h2>Step 2: Select Answer Key</h2>
+                    <div class="step-info"><p><strong>Student ID:</strong> {{ single_scan_student_id }}</p></div>
+                    <form method="POST" action="{{ url_for('main_route') }}">
+                        <input type="hidden" name="form_action" value="single_scan_step_2">
+                        <input type="hidden" name="active_mode_on_submit" value="single">
+                        <label for="answer_key_select_single">Select Answer Key:</label>
+                        <select id="answer_key_select_single" name="answer_key_select_single" required>
+                            {% for key in answer_keys %}
+                                <option value="{{ key }}" {% if key == single_scan_selected_key %}selected{% endif %}>{{ key }}</option>
+                            {% endfor %}
+                            {% if not answer_keys %}<option value="" disabled>No keys available. Manage keys first.</option>{% endif %}
+                        </select>
+                        <button type="submit" {% if not answer_keys %}disabled{% endif %}>Next</button>
+                        <button type="button" onclick="window.location.href='{{ url_for('reset_single_scan_flow') }}';" class="secondary">Start Over</button>
+                    </form>
+                {% elif single_scan_step == 3 %}
+                    <h2>Step 3: Upload Exam Sheet</h2>
+                    <div class="step-info">
+                        <p><strong>Student ID:</strong> {{ single_scan_student_id }}</p>
+                        <p><strong>Answer Key:</strong> {{ single_scan_selected_key }}</p>
+                    </div>
+                    <form method="POST" enctype="multipart/form-data" action="{{ url_for('main_route') }}">
+                        <input type="hidden" name="form_action" value="single_scan_step_3">
+                        <input type="hidden" name="active_mode_on_submit" value="single">
+                        <label for="exam_image_single">Upload exam sheet (image):</label>
+                        <input type="file" id="exam_image_single" name="exam_image" accept="image/png, image/jpeg, image/bmp, image/tiff" required>
+                        <button type="submit">Analyze Exam</button>
+                        <button type="button" onclick="window.location.href='{{ url_for('reset_single_scan_flow') }}';" class="secondary">Start Over</button>
+                    </form>
+                {% elif single_scan_step == 4 and single_scan_results_data %}
+                    <div class="analysis-results">
+                        <h2>Analysis Results</h2>
+                        <p><strong>Student ID (Entered):</strong> {{ single_scan_results_data.input_student_id }}</p>
+                        {% if single_scan_results_data.student_id != single_scan_results_data.input_student_id %}
+                                <p><strong>Student ID (Detected on Sheet):</strong> {{ single_scan_results_data.student_id }}</p>
+                        {% endif %}
+                        <p><strong>Answer Key Used:</strong> {{ single_scan_results_data.selected_answer_key }}</p>
+                        <div class="grade-container">
+                            <h3>Grade: {{ "%.2f"|format(single_scan_results_data.grade|float) if single_scan_results_data.grade is not none else 'N/A' }} / 10</h3>
+                            {% if verificare_umana %}
+                                <button onclick="sendSingleExamToNocoDB()" class="success">Send to NocoDB & Drive</button>
+                            {% else %}
+                                <p style="margin-left: 15px;"><em>Verification disabled. Results not saved.</em></p>
+                            {% endif %}
+                        </div>
+                        <div class="submission-section">
+                                <div id="single_exam_submission_status" class="submission-status" style="display:none;"></div>
+                                <div id="single_exam_drive_link_container" style="display: none; margin-top:10px;">
+                                    <a id="single_exam_drive_link" href="#" target="_blank" class="drive-link"></a>
+                                </div>
+                        </div>
+                        <h3 onclick="toggleExpandableTable(this, 'singleAnswersTable')" class="expandable-header">Detected Answers</h3>
+                        <table id="singleAnswersTable" style="display:none;">
+                            <thead><tr><th>Question</th><th>Detected Answer</th></tr></thead>
+                            <tbody>
+                            {% if single_scan_results_data.answers %}
+                                {% for q, ans in single_scan_results_data.answers.items()|sort(attribute='0') %}
+                                <tr><td>{{ q }}</td><td>{{ ans }}</td></tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr><td colspan="2">No answers detected or available.</td></tr>
+                            {% endif %}
+                            </tbody>
+                        </table>
+                        {% if single_scan_results_data.csv_filename %}
+                            <p style="margin-top:15px;"><a href="{{ url_for('download_csv', filename=single_scan_results_data.csv_filename) }}" class="drive-link" download>Download Results (CSV)</a></p>
+                        {% endif %}
+                        {% if single_scan_results_data.annotated_img_filename %}
+                            <h3 onclick="toggleExpandableTable(this, 'singleAnnotatedImageContainer')" class="expandable-header expanded" style="margin-top:15px;">Annotated Image</h3>
+                            <div id="singleAnnotatedImageContainer" style="display:block;">
+                                <img src="{{ url_for('static', filename=single_scan_results_data.annotated_img_filename) }}?t={{ range(1, 10000)|random }}" alt="Annotated Exam Sheet" class="annotated-image">
+                            </div>
+                        {% else %}
+                            <p style="margin-top:15px;"><em>No annotated image available. Analysis might have failed.</em></p>
+                        {% endif %}
+                        <hr style="margin-top:20px; margin-bottom:20px;">
+                        <a href="{{ url_for('reset_single_scan_flow') }}" class="button-like">Analyze Another Single Exam</a>
+                    </div>
+                {% else %}
+                    <p>Start by entering a Student ID above or <a href="{{ url_for('reset_single_scan_flow') }}">click here to reset</a>.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <div id="batchModeSection" class="content-section {{ 'active' if active_mode == 'batch' else '' }}">
+            <div class="container">
+                <h1>Batch Exam Processing</h1>
+                <form id="batch-analysis-initiate-form" action="{{ url_for('main_route') }}" method="post">
+                    <input type="hidden" name="form_action" value="initiate_batch_analysis">
+                    <input type="hidden" name="active_mode_on_submit" value="batch">
+                    <label for="answer_key_batch_select">Select Answer Key for Batch:</label>
+                    <select id="answer_key_batch_select" name="answer_key_batch_select">
+                        {% for key in answer_keys %}
+                            <option value="{{ key }}" {% if key == selected_answer_key_batch %}selected{% endif %}>{{ key }}</option>
+                        {% endfor %}
+                        {% if not answer_keys %}<option value="" disabled>No keys available. Manage keys first.</option>{% endif %}
+                    </select>
+                    <button type="submit" id="analyze_all_button" {% if not answer_keys %}disabled{% endif %}>Analyze All Files in '{{ UPLOAD_FOLDER_NAME }}'</button>
+                </form>
+
+                {% if batch_results_for_display %}
+                    <div class="batch-results analysis-results">
+                        <h2>Batch Analysis Results {% if pending_batch_verification_data_exists and verificare_umana %}(Pending Verification){% endif %}</h2>
+                        {% if pending_batch_verification_data_exists and verificare_umana %}
+                            <p>Review results. Approve to save final images to NocoDB/Drive & delete temp files, Reject to discard temporary uploads & local processed files.</p>
+                        {% elif not verificare_umana and batch_results_for_display %}
+                            <p>Verification disabled. Results were processed locally but not prepared for NocoDB/Drive submission.</p>
+                        {% elif not pending_batch_verification_data_exists and batch_results_for_display %}
+                            <p>Batch analysis complete. {% if verificare_umana %}No items require verification (perhaps due to upload errors or prior processing).{% else %}Verification was disabled.{% endif %}</p>
+                        {% endif %}
+                        <table>
+                            <thead><tr><th>Student ID</th><th>Grade</th><th>Status</th><th>Google Drive (Temp Link)</th><th>Answer Key</th><th>Original File</th></tr></thead>
+                            <tbody>
+                            {% for result in batch_results_for_display %}
+                                <tr>
+                                    <td>{{ result.student_id }}</td>
+                                    <td>{{ "%.2f"|format(result.grade|float) if result.grade is not none else 'N/A' }}</td>
+                                    <td>{{ result.status }}</td>
+                                    <td>
+                                        {% if result.drive_link %}<a href="{{ result.drive_link }}" target="_blank" class="drive-link">View Temp Exam</a>
+                                        {% elif verificare_umana and result.status == 'Temp Upload Failed' %}Upload Error
+                                        {% elif verificare_umana and result.status == 'Annot. Img Missing' %} Image Missing
+                                        {% elif not verificare_umana %} Verification Disabled
+                                        {% else %} N/A {% endif %}
+                                    </td>
+                                    <td>{{ result.answer_key_used }}</td>
+                                    <td>{{ result.original_filename }}</td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                        {% if pending_batch_verification_data_exists and verificare_umana %}
+                            <form action="{{ url_for('verify_batch_action_route') }}" method="post" class="batch-verification-buttons">
+                                <input type="hidden" name="active_mode_on_submit" value="batch">
+                                <button type="submit" name="action" value="approve" class="success">Approve Batch & Save Final</button>
+                                <button type="submit" name="action" value="reject" class="danger">Reject Batch & Discard All</button>
+                            </form>
+                        {% endif %}
+                    </div>
+                {% elif request.form.get('form_action') == 'initiate_batch_analysis' and not batch_results_for_display %}
+                    <p>No results generated from batch processing. Check if '{{ UPLOAD_FOLDER_NAME }}' contains valid image files and review server logs for errors.</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        {% if session.user_role == 'admin' %}
+        <div id="keysSection" class="content-section {{ 'active' if active_mode == 'keys' else '' }}">
+            <div class="container">
+                <h1>Manage Answer Keys</h1>
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages and (active_mode == 'keys' or form_action_error_on_keys) %}
+                        <ul class="flash-messages">
+                            {% for category, message in messages %}
+                                {% if category == 'error' or category == 'success' %}
+                                    <li class="{{ category }}">{{ message }}</li>
+                                {% endif %}
+                            {% endfor %}
+                        </ul>
+                        {% endif %}
+                    {% endwith %}
+
+                <h2>Creeaza sabloane de corectare</h2>
+                <form method="POST" action="{{ url_for('main_route') }}">
+                    <input type="hidden" name="form_action" value="manage_answer_key">
+                    <input type="hidden" name="active_mode_on_submit" value="keys">
+                    <div>
+                        <label for="key_name_manage">Numele noului sablon de corectare</label>
+                        <input type="text" id="key_name_manage" name="key_name_manage" required>
+                    </div>
+                    <div>
+                        <label for="answers_string_manage">Raspunsuri corecte in formatul: A01:B; A02:C; A03:D: etc; ... {{ expected_total_questions }}:D):</label>
+                        <textarea id="answers_string_manage" name="answers_string_manage" rows="10"
+                                    required></textarea>
+                    </div>
+                    <button type="submit">Save Answer Key</button>
+                </form>
+
+                <h2>Sabloane curente</h2>
+                {% if answer_keys %}
+                    <ul class="existing-keys-list">
+                        {% for key in answer_keys %}
+                            <li>{{ key }}</li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p>No answer keys found. Create one above (e.g., "ExamVersion1").</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <script>
+        function showInitialMode() {
+            const activeMode = "{{ active_mode|default('single', true) }}";
+            const userRole = "{{ session.user_role|default('user', true) }}";
+
+            document.getElementById('singleScanSection').style.display = 'none';
+            document.getElementById('batchModeSection').style.display = 'none';
+            
+            const keysSection = document.getElementById('keysSection');
+            if (keysSection) { // keysSection might not exist if role is 'user'
+                keysSection.style.display = 'none';
+            }
+
+            if (activeMode === 'single') {
+                document.getElementById('singleScanSection').style.display = 'block';
+            } else if (activeMode === 'batch') {
+                document.getElementById('batchModeSection').style.display = 'block';
+            } else if (activeMode === 'keys' && userRole === 'admin' && keysSection) {
+                keysSection.style.display = 'block';
+            } else if (activeMode === 'keys' && userRole !== 'admin') {
+                // If user somehow has 'keys' as active_mode but isn't admin, default to single
+                document.getElementById('singleScanSection').style.display = 'block';
+            }
+        }
+
+        function toggleExpandableTable(headerElement, contentId) {
+            var content = document.getElementById(contentId);
+            var isImageContainer = contentId === 'singleAnnotatedImageContainer';
+            var displayStyle = isImageContainer ? 'block' : 'table';
+
+            if (content.style.display === 'none' || content.style.display === '') {
+                content.style.display = displayStyle;
+                headerElement.classList.add('expanded');
+            } else {
+                content.style.display = 'none';
+                headerElement.classList.remove('expanded');
+            }
+        }
+
+        function sendSingleExamToNocoDB() {
+            {% if active_mode == 'single' and single_scan_step == 4 and single_scan_results_data and verificare_umana %}
+            const results = {{ single_scan_results_data|tojson }};
+            const studentIdForNocoDB = results.input_student_id;
+            const grade = results.grade;
+            const answers = results.answers;
+            const annotatedImgFilename = results.annotated_img_filename;
+            const answerKeyUsed = results.selected_answer_key;
+            const csvFilename = results.csv_filename;
+
+            if (!studentIdForNocoDB || grade === null || !answers || Object.keys(answers).length === 0 || !annotatedImgFilename) {
+                alert('Missing data to send (Student ID, grade, answers, or image path). Check analysis results.'); return;
+            }
+            const statusEl = document.getElementById('single_exam_submission_status');
+            const driveLinkContainerEl = document.getElementById('single_exam_drive_link_container');
+            const driveLinkEl = document.getElementById('single_exam_drive_link');
+            const sendButton = document.querySelector('#singleScanSection .grade-container button.success');
+
+            statusEl.textContent = 'Status: Sending... Please wait.'; statusEl.className = 'submission-status warning'; statusEl.style.display = 'block';
+            driveLinkContainerEl.style.display = 'none';
+            if(sendButton) sendButton.disabled = true;
+
+            fetch("{{ url_for('send_single_exam_to_nocodb_route') }}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() if csrf_token else "" }}' },
+                body: JSON.stringify({ student_id: studentIdForNocoDB, grade: grade, answers: answers, annotated_img_filename: annotatedImgFilename, answer_key_used: answerKeyUsed, csv_filename: csvFilename })
+            })
+            .then(response => response.json().then(data => ({ status: response.status, body: data })))
+            .then(dataObj => {
+                const data = dataObj.body;
+                statusEl.textContent = 'Status: ' + data.message;
+                if (dataObj.status >= 200 && dataObj.status < 300 && data.success) {
+                    statusEl.classList.remove('warning', 'error'); statusEl.classList.add('success');
+                    if (data.drive_link) {
+                        driveLinkContainerEl.style.display = 'block'; driveLinkEl.href = data.drive_link; driveLinkEl.textContent = 'View on Google Drive';
+                    }
+                    setTimeout(() => { window.location.href = "{{ url_for('reset_single_scan_flow') }}"; }, 4000);
+                } else {
+                    statusEl.classList.remove('success', 'warning');
+                    statusEl.classList.add(dataObj.status === 403 ? 'warning' : 'error');
+                    if(sendButton) sendButton.disabled = false; 
+                }
+            })
+            .catch(error => {
+                statusEl.textContent = 'Status: Network Error - ' + error.message;
+                statusEl.className = 'submission-status error';
+                if(sendButton) sendButton.disabled = false; 
+                });
+            {% else %}
+            alert('Cannot send: No results available, verification is disabled, or not in single scan results view.');
+            {% endif %}
+        }
+
+        function toggleVerificareUmana() {
+            const button = document.getElementById('toggle_verificare_btn');
+            button.disabled = true;
+            button.textContent = 'Processing...';
+
+            fetch("{{ url_for('toggle_verificare_umana_route') }}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token() if csrf_token else "" }}' }
+            })
+            .then(response => response.json())
+            .then(data => { if (data.success) { window.location.reload(); } else { alert('Failed to toggle verification.'); button.disabled = false; } })
+            .catch(error => {
+                alert('Error toggling verification: ' + error.message);
+                button.disabled = false;
+                window.location.reload(); 
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            showInitialMode();
+
+            {% if active_mode == 'single' and single_scan_step == 4 and single_scan_results_data and single_scan_results_data.annotated_img_filename %}
+                const imgContainer = document.getElementById('singleAnnotatedImageContainer');
+                const imgHeader = document.querySelector('#singleScanSection h3.expandable-header[onclick*="singleAnnotatedImageContainer"]');
+                if (imgContainer) { imgContainer.style.display = 'block'; }
+                if (imgHeader && !imgHeader.classList.contains('expanded')) { imgHeader.classList.add('expanded'); }
+                
+                const answersTable = document.getElementById('singleAnswersTable');
+                const answersHeader = document.querySelector('#singleScanSection h3.expandable-header[onclick*="singleAnswersTable"]');
+                if (answersTable && answersTable.style.display !== 'table') { 
+                    answersTable.style.display = 'none';
+                    if (answersHeader && answersHeader.classList.contains('expanded')) {
+                        answersHeader.classList.remove('expanded');
+                    }
+                } else if (answersTable && answersTable.style.display === 'table' && answersHeader) {
+                    if (!answersHeader.classList.contains('expanded')) {
+                        answersHeader.classList.add('expanded');
+                    }
+                }
+            {% endif %}
+        });
+    </script>
+</body>
+</html>
